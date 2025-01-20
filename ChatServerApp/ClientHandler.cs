@@ -45,18 +45,14 @@ namespace ChatServerApp
             {
                 try
                 {
-                    Console.WriteLine($"offset:{args.Offset},{args.BytesTransferred}");
-                    //string message = Encoding.UTF8.GetString(args.Buffer, args.Offset, args.BytesTransferred);
                     packetBuffer.AddData(args.Buffer);
 
                     ProcessPackets();
-                    //Console.WriteLine($"Receive:{message}");
-                    //server.BroadcastMessage(message, clientId);
                     StartReceive();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    System.Console.WriteLine($"ProcessReceive");
+                    Console.WriteLine($"ProcessReceive Error: {ex.Message}");
                 }
             }
             else
@@ -70,7 +66,6 @@ namespace ChatServerApp
             while (packetBuffer.GetPacket(out var packet))
             {
                 string message = Encoding.UTF8.GetString(packet);
-                Console.WriteLine($"Receive:{message}");
                 server.BroadcastMessage(message, clientId);
             }
         }
@@ -103,20 +98,28 @@ namespace ChatServerApp
 
         public void SendMessage(string message)
         {
-            //byte[] messageBuffer = Encoding.UTF8.GetBytes(message);
             SocketAsyncEventArgs sendEventArg = ioPool.Rent();
-
-            ///
             byte[] messageBuffer = packetBuffer.CreatePacket(message);
-            ///
-            sendEventArg.SetBuffer(messageBuffer, 0, messageBuffer.Length);
-            sendEventArg.Completed += OnReceiveComplected;
-            sendEventArg.UserToken = this;
 
-            bool pending = clientSocket.SendAsync(sendEventArg);
-            if (!pending)
+            try
             {
-                ProcessSend(sendEventArg);
+                sendEventArg.SetBuffer(messageBuffer, 0, messageBuffer.Length);
+                sendEventArg.Completed += OnReceiveComplected;
+                sendEventArg.UserToken = this;
+
+                bool pending = clientSocket.SendAsync(sendEventArg);
+                if (!pending)
+                {
+                    ProcessSend(sendEventArg);
+                }
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"SocketException occurred: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception occurred: {ex.Message}");
             }
         }
 
@@ -135,7 +138,7 @@ namespace ChatServerApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Close Error:{ex.Message}");
+                Console.WriteLine($"Close Socket Error: {ex.Message}");
             }
             finally
             {

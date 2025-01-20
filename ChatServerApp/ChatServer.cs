@@ -32,41 +32,62 @@ namespace ChatServerApp
 
         private void RegisterAccept(SocketAsyncEventArgs args)
         {
-            if (args == null)
+            try
             {
-                args = acceptPool.Rent();
-                args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-            }
-            else
-            {
-                args.AcceptSocket = null;
-            }
+                if (args == null)
+                {
+                    args = acceptPool.Rent();
+                    args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
+                }
+                else
+                {
+                    args.AcceptSocket = null;
+                }
 
-            bool pending = listenSocket.AcceptAsync(args);
-            if (!pending)
+                bool pending = listenSocket.AcceptAsync(args);
+                if (!pending)
+                {
+                    OnAcceptCompleted(null, args);
+                }
+            }
+            catch (Exception ex)
             {
-                OnAcceptCompleted(null, args);
+                Console.WriteLine($"RegisterAccept Error: {ex.Message}");
             }
         }
 
         private void OnAcceptCompleted(object sender, SocketAsyncEventArgs args)
         {
-            Console.WriteLine($"Accept:{args}");
-            if (args.SocketError == SocketError.Success)
+            try
             {
-                Guid clientId = Guid.NewGuid();
-                ClientHandler handler = new ClientHandler(args.AcceptSocket, this, ioPool, clientId);
-                if (clients.TryAdd(clientId, handler))
+                if (args.SocketError == SocketError.Success)
                 {
-                    handler.StartReceive();
-                }
-                else
+                    Guid clientId = Guid.NewGuid();
+                    Console.WriteLine($"Client Connected: {clientId}");
+                    ClientHandler handler = new ClientHandler(args.AcceptSocket, this, ioPool, clientId);
+                    if (clients.TryAdd(clientId, handler))
+                    {
+                        handler.StartReceive();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to add client to dictionary");
+                        args.AcceptSocket.Close();
+                    }
+                }                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OnAcceptCompleted Error: {ex.Message}");
+                if(args.AcceptSocket != null)
                 {
-                    Console.WriteLine("Failed to add client to dictionary");
                     args.AcceptSocket.Close();
                 }
             }
-            RegisterAccept(args);
+            finally
+            {
+                RegisterAccept(args);
+            }
         }
 
         public void BroadcastMessage(string message, Guid guid)
@@ -75,7 +96,14 @@ namespace ChatServerApp
             {
                 if (client.Key != guid)
                 {
-                    client.Value.SendMessage(message);
+                    try
+                    {
+                        client.Value.SendMessage(message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Broadcasting Error: {ex.Message}");
+                    }
                 }
             }
         }
@@ -90,20 +118,27 @@ namespace ChatServerApp
 
         public void Stop()
         {
-            if (listenSocket != null)
+            try
             {
-                listenSocket.Close();
-                listenSocket = null;
-            }
+                if (listenSocket != null)
+                {
+                    listenSocket.Close();
+                    listenSocket = null;
+                }
 
-            foreach (var client in clients)
+                foreach (var client in clients)
+                {
+                    client.Value.Close();
+                }
+
+                clients.Clear();
+                acceptPool.ClearPool();
+                ioPool.ClearPool();
+            }
+            catch (Exception ex)
             {
-                client.Value.Close();
+                Console.WriteLine($"Stop Error: {ex.Message}");
             }
-
-            clients.Clear();
-            acceptPool.ClearPool();
-            ioPool.ClearPool();
         }
     }
 }

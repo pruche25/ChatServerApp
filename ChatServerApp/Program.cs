@@ -13,10 +13,12 @@ try
 
     serverThread.Start();
     Console.WriteLine("Processing Chat Server...");
+    Console.WriteLine("q를 입력하면 서버가 종료됩니다.");
 
     while (true)
     {
         string input = Console.ReadLine();
+        
         if (input?.ToLower() == "q")
         {
             Console.WriteLine("Terminate Chat Server");

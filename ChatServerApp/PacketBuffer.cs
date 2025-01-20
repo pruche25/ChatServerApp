@@ -29,10 +29,11 @@ namespace ChatServerApp
             }
             int packetSize = BitConverter.ToInt32(buffer.ToArray(), 0);
 
+            // 유효하지 않은 패킷 크기 처리
             if (packetSize <= 0)
-            { // 유효하지 않은 패킷 크기 처리
-                Console.WriteLine("Invalid packet size: " + packetSize);
-                // 버퍼 초기화 또는 유효하지 않은 데이터 제거 (옵션에 따라 다름)
+            { 
+                //Console.WriteLine("Invalid packet size: " + packetSize);
+                // 버퍼 초기화 또는 유효하지 않은 데이터 제거
                 buffer.Clear();
                 return false;
             }
