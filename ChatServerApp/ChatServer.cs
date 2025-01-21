@@ -11,6 +11,7 @@ namespace ChatServerApp
 {
     internal class ChatServer
     {
+        private const int ListenQueueSize = 100; // 리스닝 큐 크기
         private Socket listenSocket;
         private SocketAsyncEventArgsPool acceptPool;
         private SocketAsyncEventArgsPool ioPool;
@@ -26,7 +27,7 @@ namespace ChatServerApp
 
         public void Start()
         {
-            listenSocket.Listen(100);
+            listenSocket.Listen(ListenQueueSize);
             RegisterAccept(null);
         }
 

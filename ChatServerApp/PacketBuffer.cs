@@ -9,11 +9,12 @@ namespace ChatServerApp
     internal class PacketBuffer
     {
         private const int HeaderSize = 4;
+        private const int InitialBufferSize = 1024; // 초기 버퍼 크기 상수
         private readonly List<byte> buffer;
 
         public PacketBuffer()
         {
-            buffer = new List<byte>();
+            buffer = new List<byte>(InitialBufferSize);
         }
 
         public void AddData(byte[] data)

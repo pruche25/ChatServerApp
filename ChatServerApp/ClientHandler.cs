@@ -9,12 +9,14 @@ namespace ChatServerApp
 {
     internal class ClientHandler
     {
+        private const int BufferSize = 1024; // 버퍼 크기
         private Socket clientSocket;
         private ChatServer server;
         private SocketAsyncEventArgsPool ioPool;
         private Guid clientId;
 
         private readonly PacketBuffer packetBuffer;
+        private bool isClosed; // 클로즈 상태를 나타내는 플래그
 
         public ClientHandler(Socket clientSocket, ChatServer server, SocketAsyncEventArgsPool ioPool, Guid clientId)
         {
@@ -24,13 +26,14 @@ namespace ChatServerApp
             this.clientId = clientId;
 
             packetBuffer = new PacketBuffer();
+            isClosed = false;
         }
 
         public void StartReceive()
         {
             SocketAsyncEventArgs receiveEventArg = ioPool.Rent();
-            receiveEventArg.SetBuffer(new byte[1024], 0, 1024);
-            receiveEventArg.Completed += OnReceiveComplected;
+            receiveEventArg.SetBuffer(new byte[BufferSize], 0, BufferSize);
+            receiveEventArg.Completed += OnReceiveCompleted;
             receiveEventArg.UserToken = this;
             bool pending = clientSocket.ReceiveAsync(receiveEventArg);
             if (!pending)
@@ -59,6 +62,8 @@ namespace ChatServerApp
             {
                 Close();
             }
+            args.Completed -= OnReceiveCompleted; 
+            ioPool.Return(args);
         }
 
         private void ProcessPackets()
@@ -70,7 +75,7 @@ namespace ChatServerApp
             }
         }
 
-        private void OnReceiveComplected(object sender, SocketAsyncEventArgs args)
+        private void OnReceiveCompleted(object sender, SocketAsyncEventArgs args)
         {
             switch (args.LastOperation)
             {
@@ -92,7 +97,7 @@ namespace ChatServerApp
             {
                 Close();
             }
-            args.Completed -= OnReceiveComplected;
+            args.Completed -= OnReceiveCompleted;
             ioPool.Return(args);
         }
 
@@ -104,7 +109,7 @@ namespace ChatServerApp
             try
             {
                 sendEventArg.SetBuffer(messageBuffer, 0, messageBuffer.Length);
-                sendEventArg.Completed += OnReceiveComplected;
+                sendEventArg.Completed += OnReceiveCompleted;
                 sendEventArg.UserToken = this;
 
                 bool pending = clientSocket.SendAsync(sendEventArg);
@@ -125,6 +130,11 @@ namespace ChatServerApp
 
         public void Close()
         {
+            if (isClosed)
+                return;
+
+            isClosed = true;
+
             if (clientSocket == null)
                 return;
 
@@ -144,6 +154,7 @@ namespace ChatServerApp
             {
                 server.RemoveClient(clientId);
                 clientSocket = null;
+                Console.WriteLine($"Client Disconnected: {clientId}");
             }
         }
     }
