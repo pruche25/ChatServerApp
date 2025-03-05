@@ -6,19 +6,23 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Configuration;
+using System.Collections.Specialized;
 
 namespace ChatServerApp
 {
     internal class ChatServer
     {
-        private const int ListenQueueSize = 100; // 리스닝 큐 크기
+        private readonly int ListenQueueSize; 
         private Socket listenSocket;
         private SocketAsyncEventArgsPool acceptPool;
         private SocketAsyncEventArgsPool ioPool;
         private ConcurrentDictionary<Guid, ClientHandler> clients = new ConcurrentDictionary<Guid, ClientHandler>();
+        private bool isServerRunning = false;
 
         public ChatServer(int port, int maxConnections)
         {
+            ListenQueueSize = int.Parse(ConfigurationManager.AppSettings.Get("ListenQueueSize")); // 리스닝 큐 크기
             listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
             acceptPool = new SocketAsyncEventArgsPool(maxConnections);
@@ -27,12 +31,19 @@ namespace ChatServerApp
 
         public void Start()
         {
+            isServerRunning = true; // 서버가 실행 중
             listenSocket.Listen(ListenQueueSize);
             RegisterAccept(null);
         }
 
         private void RegisterAccept(SocketAsyncEventArgs args)
         {
+            if (!isServerRunning)
+            {
+                // 서버가 종료 상태라면 새로운 Accept 작업을 수행하지 않음
+                return;
+            }
+    
             try
             {
                 if (args == null)
@@ -119,6 +130,8 @@ namespace ChatServerApp
 
         public void Stop()
         {
+            isServerRunning = false;
+
             try
             {
                 if (listenSocket != null)

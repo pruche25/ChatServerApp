@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,12 +9,14 @@ namespace ChatServerApp
 {
     internal class PacketBuffer
     {
-        private const int HeaderSize = 4;
-        private const int InitialBufferSize = 1024; // 초기 버퍼 크기 상수
+        private readonly int HeaderSize;
+        private readonly int InitialBufferSize; // 초기 버퍼 크기 상수
         private readonly List<byte> buffer;
 
         public PacketBuffer()
         {
+            HeaderSize = int.Parse(ConfigurationManager.AppSettings.Get("headerSize"));
+            InitialBufferSize = int.Parse(ConfigurationManager.AppSettings.Get("bufferSize"));
             buffer = new List<byte>(InitialBufferSize);
         }
 
